@@ -87,6 +87,10 @@ EXPORT_TRACEPOINT_SYMBOL(display_readl);
 #include "null_or.h"
 #endif /*CONFIG_TEGRA_DC_FAKE_PANEL_SUPPORT*/
 
+#if defined(CONFIG_FRAMEBUFFER_CONSOLE) || defined(CONFIG_TEGRA_HDMI_PRIMARY)
+#include "hdmi.h"
+#endif /* CONFIG_FRAMEBUFFER_CONSOLE  || CONFIG_TEGRA_HDMI_PRIMARY */
+
 
 /* HACK! This needs to come from DT */
 #include "../../../../arch/arm/mach-tegra/iomap.h"
@@ -4877,8 +4881,10 @@ static int tegra_dc_probe(struct platform_device *ndev)
 	tegra_dc_feature_register(dc);
 
 	if (dc->pdata->default_out) {
+#ifdef CONFIG_FRAMEBUFFER_CONSOLE
 		if (dc->pdata->default_out->hotplug_init)
 			dc->pdata->default_out->hotplug_init(&dc->ndev->dev);
+#endif /* CONFIG_FRAMEBUFFER_CONSOLE */
 		ret = tegra_dc_set_out(dc, dc->pdata->default_out);
 		if (ret < 0) {
 			dev_err(&dc->ndev->dev, "failed to initialize DC out ops\n");
@@ -4890,13 +4896,32 @@ static int tegra_dc_probe(struct platform_device *ndev)
 	}
 	dc->mode_dirty = false; /* ignore changes tegra_dc_set_out has done */
 
-	if ((dc->pdata->flags & TEGRA_DC_FLAG_ENABLED) &&
-			dc->out && dc->out->type == TEGRA_DC_OUT_LVDS) {
+#if defined(CONFIG_FRAMEBUFFER_CONSOLE) || defined(CONFIG_TEGRA_HDMI_PRIMARY)
+	if (dc->out && dc->out->n_modes &&
+	    (dc->out->type == TEGRA_DC_OUT_HDMI)) {
 		struct fb_monspecs specs;
-		struct tegra_dc_lvds_data *lvds = tegra_dc_get_outdata(dc);
-		if (!tegra_edid_get_monspecs(lvds->edid, &specs))
-			tegra_dc_set_fb_mode(dc, specs.modedb, false);
+		struct tegra_dc_hdmi_data *hdmi = tegra_dc_get_outdata(dc);
+		if (!tegra_edid_get_monspecs(hdmi->edid, &specs)) {
+			struct tegra_dc_mode *dcmode = &dc->out->modes[0];
+			dcmode->pclk          = specs.modedb->pixclock;
+			dcmode->pclk          = PICOS2KHZ(dcmode->pclk);
+			dcmode->pclk         *= 1000;
+			dcmode->h_ref_to_sync = 1;
+			dcmode->v_ref_to_sync = 1;
+			dcmode->h_sync_width  = specs.modedb->hsync_len;
+			dcmode->v_sync_width  = specs.modedb->vsync_len;
+			dcmode->h_back_porch  = specs.modedb->left_margin;
+			dcmode->v_back_porch  = specs.modedb->upper_margin;
+			dcmode->h_active      = specs.modedb->xres;
+			dcmode->v_active      = specs.modedb->yres;
+			dcmode->h_front_porch = specs.modedb->right_margin;
+			dcmode->v_front_porch = specs.modedb->lower_margin;
+			tegra_dc_set_mode(dc, dcmode);
+			dc->pdata->fb->xres = dcmode->h_active;
+			dc->pdata->fb->yres = dcmode->v_active;
+		}
 	}
+#endif /* CONFIG_FRAMEBUFFER_CONSOLE  || CONFIG_TEGRA_HDMI_PRIMARY */
 
 #ifndef CONFIG_TEGRA_ISOMGR
 		/*

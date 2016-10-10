@@ -705,41 +705,6 @@ void tegra_fb_update_monspecs(struct tegra_fb_info *fb_info,
 	mutex_unlock(&fb_info->info->lock);
 }
 
-void tegra_fb_update_fix(struct tegra_fb_info *fb_info,
-				struct fb_monspecs *specs)
-{
-	struct tegra_dc *dc = fb_info->win.dc;
-	struct tegra_edid *dc_edid = dc->edid;
-	struct fb_fix_screeninfo *fix = &fb_info->info->fix;
-
-	mutex_lock(&fb_info->info->lock);
-
-	/* FB_CAP_* and TEGRA_DC_* color depth flags are shifted by 1 */
-	BUILD_BUG_ON((TEGRA_DC_Y420_30 << 1) != FB_CAP_Y420_DC_30);
-	BUILD_BUG_ON((TEGRA_DC_RGB_48 << 1) != FB_CAP_RGB_DC_48);
-	fix->capabilities = (tegra_edid_get_cd_flag(dc_edid) << 1);
-	if (tegra_edid_get_ex_hdr_cap(dc_edid))
-		fix->capabilities |= FB_CAP_HDR;
-	if (tegra_edid_support_yuv422(dc_edid))
-		fix->capabilities |= FB_CAP_Y422;
-	if (tegra_edid_support_yuv444(dc_edid))
-		fix->capabilities |= FB_CAP_Y444;
-
-	fix->max_clk_rate = tegra_edid_get_max_clk_rate(dc_edid);
-
-	fix->colorimetry = tegra_edid_get_ex_colorimetry(dc_edid);
-
-	mutex_unlock(&fb_info->info->lock);
-}
-
-struct fb_var_screeninfo *tegra_fb_get_var(struct tegra_fb_info *fb_info)
-{
-	if (!fb_info || !fb_info->info)
-		return NULL;
-
-	return &fb_info->info->var;
-}
-
 static ssize_t nvdps_show(struct device *device,
 	struct device_attribute *attr, char *buf)
 {

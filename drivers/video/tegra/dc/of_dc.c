@@ -456,7 +456,7 @@ static int parse_disp_default_out(struct platform_device *ndev,
 
 	if (default_out->type == TEGRA_DC_OUT_HDMI) {
 		default_out->depth = 0;
-#ifdef CONFIG_FRAMEBUFFER_CONSOLE
+#if defined(CONFIG_FRAMEBUFFER_CONSOLE) || defined(CONFIG_TEGRA_HDMI_PRIMARY)
 		if (!of_property_read_u32(np,
 			"nvidia,out-depth", &temp)) {
 			default_out->depth = (unsigned) temp;

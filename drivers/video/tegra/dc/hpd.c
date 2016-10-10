@@ -189,7 +189,6 @@ static void edid_read_notify(struct tegra_hpd_data *data)
 				(data->ops->get_mode_filter) ?
 				(data->ops->get_mode_filter(data->drv_data)) :
 				NULL, NULL);
-	tegra_fb_update_fix(data->dc->fb, &data->mon_spec);
 #endif
 #ifdef CONFIG_SWITCH
 	state = !!tegra_edid_audio_supported(data->edid);
