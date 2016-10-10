@@ -634,7 +634,9 @@ void tegra_fb_update_monspecs(struct tegra_fb_info *fb_info,
 {
 	struct fb_event event;
 	int i;
+	int blank = FB_BLANK_UNBLANK;
 #if defined(CONFIG_FRAMEBUFFER_CONSOLE) || defined(CONFIG_TEGRA_HDMI_PRIMARY)
+	struct fb_videomode *bestMode;
 	struct tegra_dc_mode dcmode;
 #endif /* CONFIG_FRAMEBUFFER_CONSOLE || CONFIG_TEGRA_HDMI_PRIMARY */
 
@@ -643,21 +645,38 @@ void tegra_fb_update_monspecs(struct tegra_fb_info *fb_info,
 
 	fb_destroy_modelist(&fb_info->info->modelist);
 
+	event.info = fb_info->info;
+	event.data = &blank;
+
+	/* Notify layers above fb.c that the hardware is unavailable */
+	fb_info->info->state = FBINFO_STATE_SUSPENDED;
+
 	if (specs == NULL) {
-		struct tegra_dc_mode mode;
 		memset(&fb_info->info->monspecs, 0x0,
 		       sizeof(fb_info->info->monspecs));
-		memset(&mode, 0x0, sizeof(mode));
 
 		/*
 		 * reset video mode properties to prevent garbage being
 		 * displayed on 'mode' device.
 		 */
 		fb_info->info->mode = (struct fb_videomode*) NULL;
+#ifdef CONFIG_FRAMEBUFFER_CONSOLE
+		blank = FB_BLANK_POWERDOWN;
+		console_lock();
+		fb_add_videomode(&tegra_dc_vga_mode, &fb_info->info->modelist);
+		fb_videomode_to_var(&fb_info->info->var, &tegra_dc_vga_mode);
+		fb_notifier_call_chain(FB_EVENT_BLANK, &event);
+		console_unlock();
+#endif
 
+		/* For L4T - After the next hotplug, framebuffer console will
+		 * use the old variable screeninfo by default, only video-mode
+		 * settings will be overwritten as per monitor connected.
+		 */
+#ifndef CONFIG_FRAMEBUFFER_CONSOLE
 		memset(&fb_info->info->var, 0x0, sizeof(fb_info->info->var));
+#endif /* CONFIG_FRAMEBUFFER_CONSOLE */
 
-		tegra_dc_set_mode(fb_info->win.dc, &mode);
 		mutex_unlock(&fb_info->info->lock);
 		return;
 	}
@@ -677,27 +696,48 @@ void tegra_fb_update_monspecs(struct tegra_fb_info *fb_info,
 		}
 	}
 
-	event.info = fb_info->info;
+	/* Restoring to state running. */
+	fb_info->info->state =  FBINFO_STATE_RUNNING;
 #if defined(CONFIG_FRAMEBUFFER_CONSOLE) || defined(CONFIG_TEGRA_HDMI_PRIMARY)
+/*
 	console_lock();
-	fb_notifier_call_chain(FB_EVENT_NEW_MODELIST, &event);
-	dcmode.pclk          = specs->modedb[0].pixclock;
-	dcmode.pclk          = PICOS2KHZ(dcmode.pclk);
-	dcmode.pclk         *= 1000;
-	dcmode.h_ref_to_sync = 1;
-	dcmode.v_ref_to_sync = 1;
-	dcmode.h_sync_width  = specs->modedb[0].hsync_len;
-	dcmode.v_sync_width  = specs->modedb[0].vsync_len;
-	dcmode.h_back_porch  = specs->modedb[0].left_margin;
-	dcmode.v_back_porch  = specs->modedb[0].upper_margin;
-	dcmode.h_active      = specs->modedb[0].xres;
-	dcmode.v_active      = specs->modedb[0].yres;
-	dcmode.h_front_porch = specs->modedb[0].right_margin;
-	dcmode.v_front_porch = specs->modedb[0].lower_margin;
-	tegra_dc_set_mode(fb_info->win.dc, &dcmode);
+	tegra_dc_set_fb_mode(fb_info->win.dc, specs->modedb, false);
 	fb_videomode_to_var(&fb_info->info->var, &specs->modedb[0]);
 	fb_notifier_call_chain(FB_EVENT_MODE_CHANGE_ALL, &event);
+	fb_notifier_call_chain(FB_EVENT_NEW_MODELIST, &event);
+	fb_notifier_call_chain(FB_EVENT_BLANK, &event);
 	console_unlock();
+*/
+	// WORKAROUND: If pixclock of specs->modedb[0] is not supported, the kernel stops. 
+	// Therefore, we look here for the best mode (same size, highest supported pixclock)
+	fb_videomode_to_var(&fb_info->info->var, &specs->modedb[0]);
+	bestMode = (struct fb_videomode *)(fb_find_best_mode(&fb_info->info->var, &fb_info->info->modelist));
+	if(bestMode == NULL)
+	{
+		// Error, no matching mode found
+		return;
+	}
+ 	console_lock();
+ 	fb_notifier_call_chain(FB_EVENT_NEW_MODELIST, &event);
+	dcmode.pclk          = bestMode->pixclock;
+ 	dcmode.pclk          = PICOS2KHZ(dcmode.pclk);
+ 	dcmode.pclk         *= 1000;
+ 	printk(">>> DBG: pclk=%d\n",dcmode.pclk);
+ 	dcmode.h_ref_to_sync = 1;
+ 	dcmode.v_ref_to_sync = 1;
+	dcmode.h_sync_width  = bestMode->hsync_len;
+	dcmode.v_sync_width  = bestMode->vsync_len;
+	dcmode.h_back_porch  = bestMode->left_margin;
+	dcmode.v_back_porch  = bestMode->upper_margin;
+	dcmode.h_active      = bestMode->xres;
+	dcmode.v_active      = bestMode->yres;
+	dcmode.h_front_porch = bestMode->right_margin;
+	dcmode.v_front_porch = bestMode->lower_margin; 	
+	tegra_dc_set_fb_mode(fb_info->win.dc, specs->modedb, false);
+ 	fb_videomode_to_var(&fb_info->info->var, bestMode);
+ 	fb_notifier_call_chain(FB_EVENT_MODE_CHANGE_ALL, &event);
+	fb_notifier_call_chain(FB_EVENT_BLANK, &event);
+ 	console_unlock();
 #else
 	fb_notifier_call_chain(FB_EVENT_NEW_MODELIST, &event);
 #endif
