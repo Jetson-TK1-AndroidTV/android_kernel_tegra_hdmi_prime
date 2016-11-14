@@ -114,6 +114,7 @@ obj-y                                   += panel-o-720p-6-0-01.o
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg.o
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-sdhci.o
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-sensors.o
+obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-panel.o
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-memory.o
 obj-${CONFIG_MACH_ARDBEG}               += board-ardbeg-power.o
 obj-${CONFIG_MACH_ARDBEG}               += board-norrin-power.o
@@ -136,6 +137,7 @@ obj-${CONFIG_MACH_LOKI}               	+= panel-a-1080p-11-6.o
 obj-${CONFIG_MACH_LAGUNA}               += board-ardbeg.o
 obj-${CONFIG_MACH_LAGUNA}               += board-ardbeg-sdhci.o
 obj-${CONFIG_MACH_LAGUNA}               += board-ardbeg-sensors.o
+obj-${CONFIG_MACH_LAGUNA}               += board-ardbeg-panel.o
 obj-${CONFIG_MACH_LAGUNA}               += board-laguna-power.o
 obj-${CONFIG_MACH_LAGUNA}               += panel-a-1080p-11-6.o
 

@@ -124,8 +124,6 @@ int tegra_panel_reset(struct tegra_panel_of *panel, unsigned int delay_ms);
 
 void tegra_fb_copy_or_clear(void);
 
-int tegra_disp_defer_vcore_override(void);
-
 void tegra_set_fixed_panel_ops(bool is_primary,
 			struct tegra_panel_ops *p_ops, char *panel_node);
 
