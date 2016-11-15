@@ -20,15 +20,14 @@
 
 /dts-v1/;
 
+#include <dt-bindings/display/tegra-dc.h>
+
 #include "tegra124-soc-shield.dtsi"
-#include "tegra124-platforms/tegra124-laguna-hdmi-pm375-1000-a00.dtsi"
 #include "tegra124-platforms/tegra124-jetson_tk1-keys-pm375-0000-c00-00.dtsi"
 #include "tegra124-platforms/tegra124-jetson_tk1-gpio-pm375-0000-c00-00.dtsi"
 #include "tegra124-platforms/tegra124-jetson_tk1-pinmux-pm375-0000-c00-00.dtsi"
 #include "tegra124-platforms/tegra124-jetson-power-tree-pm375-0000-c00.dtsi"
 #include "tegra124-platforms/tegra124-jetson_tk1-io-common.dtsi"
-#include "tegra124-platforms/tegra124-pm359-camera-a00.dtsi"
-#include "panel-p-wuxga-10-1.dtsi"
 
 / {
 	model = "NVIDIA Tegra124 PM375";
@@ -53,29 +52,35 @@
 		dc@54200000 {
 			status = "okay";
 			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
-			nvidia,emc-clk-rate = <204000000>;
-			nvidia,cmu-enable = <1>;
-			nvidia,low-v-win = <0x2>;
-			nvidia,fb-bpp = <32>; /* bits per pixel */
-			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
-		};
-		/* tegradc.1 */
-		dc@54240000 {
-			status = "okay";
-			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
 			nvidia,emc-clk-rate = <300000000>;
+			nvidia,cmu-enable = <1>;
 			nvidia,fb-bpp = <32>; /* bits per pixel */
 			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
 		};
-		dsi {
-			nvidia,dsi-controller-vs = <1>;
+
+		hdmi {
 			status = "okay";
-			panel-p-wuxga-10-1 {
-				nvidia,dsi-dpd-pads = <DSIC_DPD_EN DSID_DPD_EN>;
-				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(H, 3) 0>; /* PH3 */
-				nvidia,panel-bl-pwm-gpio = <&gpio TEGRA_GPIO(H, 1) 0>; /* PH1 */
+			nvidia,ddc-i2c-bus = <&hdmi_ddc>;
+			nvidia,hpd-gpio = <&gpio TEGRA_GPIO(N, 7) 1>; /* PN7 */
+			hdmi-display {
+				status = "okay";
+				compatible = "hdmi,display";
+				disp-default-out {
+					nvidia,out-type = <TEGRA_DC_OUT_HDMI>;
+					nvidia,out-flags = <TEGRA_DC_OUT_HOTPLUG_HIGH>;
+					nvidia,out-parent-clk = "pll_d2";
+					nvidia,out-max-pixclk = <3367>; /* KHZ2PICOS(297000) */
+					nvidia,out-align = <TEGRA_DC_ALIGN_MSB>;
+					nvidia,out-order = <TEGRA_DC_ORDER_RED_BLUE>;
+					nvidia,out-xres = <1920>;
+					nvidia,out-yres = <1080>;
+					nvidia,out-depth = <24>;
+				};
 			};
 		};
+	};
+	hdmi_ddc: i2c@7000c700 {
+		clock-frequency = <100000>;
 	};
 
 	pinmux@70000868 {

@@ -369,7 +369,23 @@ static void ardbeg_panel_select(void)
 {
 	struct tegra_panel *panel = NULL;
 	struct board_info mainboard;
+	struct board_info board;
 	u8 dsi_instance = DSI_INSTANCE_0;
+
+	tegra_get_display_board_info(&board);
+
+	switch (board.fab) {
+	case 0x2:
+		panel = &dsi_j_720p_5;
+		break;
+	case 0x1:
+		panel = &dsi_j_1440_810_5_8;
+		break;
+	case 0x0:
+	default:
+		panel = &dsi_l_720p_5_loki;
+		break;
+	}
 
 	if (panel) {
 		if (panel->init_sd_settings)
