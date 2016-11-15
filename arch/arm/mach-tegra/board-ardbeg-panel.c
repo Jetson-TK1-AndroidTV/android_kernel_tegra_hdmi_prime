@@ -110,14 +110,14 @@ static struct resource ardbeg_disp1_resources[] = {
 static struct resource ardbeg_disp2_resources[] = {
 	{
 		.name	= "irq",
-		.start	= INT_DISPLAY_B_GENERAL,
-		.end	= INT_DISPLAY_B_GENERAL,
+		.start	= INT_DISPLAY_GENERAL,
+		.end	= INT_DISPLAY_GENERAL,
 		.flags	= IORESOURCE_IRQ,
 	},
 	{
 		.name	= "regs",
-		.start	= TEGRA_DISPLAY2_BASE,
-		.end	= TEGRA_DISPLAY2_BASE + TEGRA_DISPLAY2_SIZE - 1,
+		.start	= TEGRA_DISPLAY_BASE,
+		.end	= TEGRA_DISPLAY_BASE + TEGRA_DISPLAY_SIZE - 1,
 		.flags	= IORESOURCE_MEM,
 	},
 	{
@@ -140,6 +140,7 @@ static struct tegra_dc_out ardbeg_disp1_out = {
 	.type		= TEGRA_DC_OUT_DSI,
 	.sd_settings	= &sd_settings,
 };
+
 
 static int ardbeg_hdmi_enable(struct device *dev)
 {
@@ -281,6 +282,7 @@ static struct tegra_dc_out ardbeg_disp2_out = {
 
 	.ddc_bus	= 3,
 	.hotplug_gpio	= ardbeg_hdmi_hpd,
+	.hdmi_out	= &ardbeg_hdmi_out,
 
 	.max_pixclock	= KHZ2PICOS(297000),
 
@@ -312,9 +314,9 @@ static struct tegra_dc_platform_data ardbeg_disp1_pdata = {
 
 static struct tegra_fb_data ardbeg_disp2_fb_data = {
 	.win		= 0,
-	.xres		= 1024,
-	.yres		= 600,
-	.bits_per_pixel = 32,
+	.xres		= 1920,
+	.yres		= 1080,
+	.bits_per_pixel = 24,
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
 };
 
@@ -330,7 +332,11 @@ static struct tegra_dc_platform_data ardbeg_disp2_pdata = {
 
 static struct platform_device ardbeg_disp2_device = {
 	.name		= "tegradc",
+#ifndef CONFIG_TEGRA_HDMI_PRIMARY
 	.id		= 1,
+#else
+	.id		= 0,
+#endif
 	.resource	= ardbeg_disp2_resources,
 	.num_resources	= ARRAY_SIZE(ardbeg_disp2_resources),
 	.dev = {
@@ -428,18 +434,18 @@ static void ardbeg_panel_select(void)
 		}
 
 		if (panel->init_fb_data)
-			panel->init_fb_data(&ardbeg_disp1_fb_data);
+			panel->init_fb_data(&ardbeg_disp2_fb_data);
 
 		if (panel->init_cmu_data)
-			panel->init_cmu_data(&ardbeg_disp1_pdata);
+			panel->init_cmu_data(&ardbeg_disp2_pdata);
 
 		if (panel->set_disp_device)
-			panel->set_disp_device(&ardbeg_disp1_device);
+			panel->set_disp_device(&ardbeg_disp2_device);
 
 		if (ardbeg_disp1_out.type == TEGRA_DC_OUT_DSI) {
 			tegra_dsi_resources_init(dsi_instance,
-				ardbeg_disp1_resources,
-				ARRAY_SIZE(ardbeg_disp1_resources));
+				ardbeg_disp2_resources,
+				ARRAY_SIZE(ardbeg_disp2_resources));
 		}
 
 		if (panel->register_bl_dev)
@@ -450,6 +456,7 @@ static void ardbeg_panel_select(void)
 	}
 
 }
+
 
 int __init ardbeg_panel_init(int board_id)
 {
@@ -485,7 +492,7 @@ int __init ardbeg_panel_init(int board_id)
 		return -EINVAL;
 	}
 
-	res = platform_get_resource_byname(&ardbeg_disp1_device,
+	res = platform_get_resource_byname(&ardbeg_disp2_device,
 					 IORESOURCE_MEM, "fbmem");
 	res->start = tegra_fb_start;
 	res->end = tegra_fb_start + tegra_fb_size - 1;
