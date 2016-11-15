@@ -354,16 +354,6 @@ static struct platform_device ardbeg_disp1_device = {
 	},
 };
 
-static struct tegra_io_dpd dsic_io = {
-	.name			= "DSIC",
-	.io_dpd_reg_index	= 1,
-	.io_dpd_bit		= 8,
-};
-static struct tegra_io_dpd dsid_io = {
-	.name			= "DSID",
-	.io_dpd_reg_index	= 1,
-	.io_dpd_bit		= 9,
-};
 static struct tegra_dc_mode hdmi_panel_modes[] = {
 	{
 		.pclk = 148500000,
@@ -383,80 +373,37 @@ static struct tegra_dc_mode hdmi_panel_modes[] = {
 
 static void ardbeg_panel_select(void)
 {
-	struct tegra_panel *panel = NULL;
-	struct board_info mainboard;
-	struct board_info board;
+	struct tegra_panel *panel = &dsi_j_720p_5;
 	u8 dsi_instance = DSI_INSTANCE_0;
 
-	tegra_get_display_board_info(&board);
+	if (panel->init_sd_settings)
+		panel->init_sd_settings(&sd_settings);
 
-	switch (board.fab) {
-	case 0x2:
-		panel = &dsi_j_720p_5;
-		break;
-	case 0x1:
-		panel = &dsi_j_1440_810_5_8;
-		break;
-	case 0x0:
-	default:
-		panel = &dsi_l_720p_5_loki;
-		break;
+	if (panel->init_dc_out)
+		panel->init_dc_out(&ardbeg_disp2_out);
+
+	if (panel->init_fb_data)
+		panel->init_fb_data(&ardbeg_disp2_fb_data);
+
+	if (panel->init_cmu_data)
+		panel->init_cmu_data(&ardbeg_disp2_pdata);
+
+	if (panel->set_disp_device)
+		panel->set_disp_device(&ardbeg_disp2_device);
+
+	if (ardbeg_disp2_out.type == TEGRA_DC_OUT_HDMI) {
+		tegra_dsi_resources_init(dsi_instance,
+			ardbeg_disp2_resources,
+			ARRAY_SIZE(ardbeg_disp2_resources));
 	}
 
-	/*
-	 * TODO
-	 * dpd enabling for dsi pads in board
-	 * will be deprecated.
-	 */
-	tegra_io_dpd_enable(&dsic_io);
-	tegra_io_dpd_enable(&dsid_io);
+	if (panel->register_bl_dev)
+		panel->register_bl_dev();
 
-	if (panel) {
-		if (panel->init_sd_settings)
-			panel->init_sd_settings(&sd_settings);
-
-		if (panel->init_dc_out) {
-			panel->init_dc_out(&ardbeg_disp1_out);
-			if (ardbeg_disp1_out.type == TEGRA_DC_OUT_DSI) {
-				ardbeg_disp1_out.dsi->dsi_instance =
-					dsi_instance;
-				ardbeg_disp1_out.dsi->dsi_panel_rst_gpio =
-					DSI_PANEL_RST_GPIO;
-				ardbeg_disp1_out.dsi->dsi_panel_bl_pwm_gpio =
-					DSI_PANEL_BL_PWM_GPIO;
-				ardbeg_disp1_out.dsi->te_gpio = TEGRA_GPIO_PR6;
-			}
-
-			tegra_get_board_info(&mainboard);
-			if ((mainboard.board_id == BOARD_E1784) ||
-				(mainboard.board_id == BOARD_P1761))
-				ardbeg_disp1_out.rotation = 180;
-		}
-
-		if (panel->init_fb_data)
-			panel->init_fb_data(&ardbeg_disp2_fb_data);
-
-		if (panel->init_cmu_data)
-			panel->init_cmu_data(&ardbeg_disp2_pdata);
-
-		if (panel->set_disp_device)
-			panel->set_disp_device(&ardbeg_disp2_device);
-
-		if (ardbeg_disp1_out.type == TEGRA_DC_OUT_DSI) {
-			tegra_dsi_resources_init(dsi_instance,
-				ardbeg_disp2_resources,
-				ARRAY_SIZE(ardbeg_disp2_resources));
-		}
-
-		if (panel->register_bl_dev)
-			panel->register_bl_dev();
-
-		if (panel->register_i2c_bridge)
-			panel->register_i2c_bridge();
-	}
+	if (panel->register_i2c_bridge)
+		panel->register_i2c_bridge();
 
 }
-
 
 int __init ardbeg_panel_init(int board_id)
 {
