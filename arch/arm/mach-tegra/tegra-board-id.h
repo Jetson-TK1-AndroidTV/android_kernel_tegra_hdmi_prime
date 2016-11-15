@@ -22,6 +22,7 @@
 #define _MACH_TEGRA_BOARD_ID_H
 
 /* Processor Board  ID */
+#define BOARD_PM000   0x0000
 #define BOARD_E1611   0x064B
 #define BOARD_E1612   0x064C
 #define BOARD_E1613   0x064D

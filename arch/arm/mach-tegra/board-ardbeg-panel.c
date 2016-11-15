@@ -348,6 +348,16 @@ static struct platform_device ardbeg_disp1_device = {
 	},
 };
 
+static struct tegra_io_dpd dsic_io = {
+	.name			= "DSIC",
+	.io_dpd_reg_index	= 1,
+	.io_dpd_bit		= 8,
+};
+static struct tegra_io_dpd dsid_io = {
+	.name			= "DSID",
+	.io_dpd_reg_index	= 1,
+	.io_dpd_bit		= 9,
+};
 static struct tegra_dc_mode hdmi_panel_modes[] = {
 	{
 		.pclk = 148500000,
@@ -386,6 +396,14 @@ static void ardbeg_panel_select(void)
 		panel = &dsi_l_720p_5_loki;
 		break;
 	}
+
+	/*
+	 * TODO
+	 * dpd enabling for dsi pads in board
+	 * will be deprecated.
+	 */
+	tegra_io_dpd_enable(&dsic_io);
+	tegra_io_dpd_enable(&dsid_io);
 
 	if (panel) {
 		if (panel->init_sd_settings)
@@ -438,10 +456,10 @@ int __init ardbeg_panel_init(int board_id)
 	int err = 0;
 	struct resource __maybe_unused *res;
 	struct platform_device *phost1x = NULL;
-	struct board_info board_info;
+	struct board_info bi;
 
-	tegra_get_board_info(&board_info);
-	if (board_info.board_id == BOARD_PM375) {
+	tegra_get_board_info(&bi);
+	if ((bi.sku == BOARD_SKU_0) && (bi.board_id == BOARD_PM000)) {
 		res = platform_get_resource_byname(&ardbeg_disp2_device,
 					 IORESOURCE_IRQ, "irq");
 		res->start = INT_DISPLAY_GENERAL;
