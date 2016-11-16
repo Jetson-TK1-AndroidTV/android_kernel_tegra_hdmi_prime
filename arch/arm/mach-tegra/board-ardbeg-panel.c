@@ -332,11 +332,7 @@ static struct tegra_dc_platform_data ardbeg_disp2_pdata = {
 
 static struct platform_device ardbeg_disp2_device = {
 	.name		= "tegradc",
-#ifndef CONFIG_TEGRA_HDMI_PRIMARY
-	.id		= 1,
-#else
 	.id		= 0,
-#endif
 	.resource	= ardbeg_disp2_resources,
 	.num_resources	= ARRAY_SIZE(ardbeg_disp2_resources),
 	.dev = {
@@ -370,41 +366,6 @@ static struct tegra_dc_mode hdmi_panel_modes[] = {
 	},
 };
 
-
-static void ardbeg_panel_select(void)
-{
-	struct tegra_panel *panel = &dsi_j_720p_5;
-	u8 dsi_instance = DSI_INSTANCE_0;
-
-	if (panel->init_sd_settings)
-		panel->init_sd_settings(&sd_settings);
-
-	if (panel->init_dc_out)
-		panel->init_dc_out(&ardbeg_disp2_out);
-
-	if (panel->init_fb_data)
-		panel->init_fb_data(&ardbeg_disp2_fb_data);
-
-	if (panel->init_cmu_data)
-		panel->init_cmu_data(&ardbeg_disp2_pdata);
-
-	if (panel->set_disp_device)
-		panel->set_disp_device(&ardbeg_disp2_device);
-
-	if (ardbeg_disp2_out.type == TEGRA_DC_OUT_HDMI) {
-		tegra_dsi_resources_init(dsi_instance,
-			ardbeg_disp2_resources,
-			ARRAY_SIZE(ardbeg_disp2_resources));
-	}
-
-	if (panel->register_bl_dev)
-		panel->register_bl_dev();
-
-	if (panel->register_i2c_bridge)
-		panel->register_i2c_bridge();
-
-}
-
 int __init ardbeg_panel_init(int board_id)
 {
 	int err = 0;
@@ -430,7 +391,21 @@ int __init ardbeg_panel_init(int board_id)
 		ardbeg_disp2_out.modes = hdmi_panel_modes;
 		ardbeg_disp2_out.n_modes = ARRAY_SIZE(hdmi_panel_modes);
 	} else
-		ardbeg_panel_select();
+		res = platform_get_resource_byname(&ardbeg_disp2_device,
+					 IORESOURCE_IRQ, "irq");
+		res->start = INT_DISPLAY_GENERAL;
+		res->end = INT_DISPLAY_GENERAL;
+		res = platform_get_resource_byname(&ardbeg_disp2_device,
+					 IORESOURCE_MEM, "regs");
+		res->start = TEGRA_DISPLAY_BASE;
+		res->end = TEGRA_DISPLAY_BASE + TEGRA_DISPLAY_SIZE - 1;
+		ardbeg_disp2_fb_data.xres = 1920;
+		ardbeg_disp2_fb_data.yres = 1080;
+		ardbeg_disp2_device.id = 0;
+		ardbeg_disp2_out.parent_clk = "pll_d";
+
+		ardbeg_disp2_out.modes = hdmi_panel_modes;
+		ardbeg_disp2_out.n_modes = ARRAY_SIZE(hdmi_panel_modes);
 
 
 	phost1x = ardbeg_host1x_init();
